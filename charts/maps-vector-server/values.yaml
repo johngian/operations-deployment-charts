@@ -59,3 +59,10 @@ debug:
 networkpolicy:
   egress:
     enabled: false
+
+tileCacheSeeding:
+  enabled: true
+  schedule: "@hourly"
+  parallelism: 6
+  command: ["seedCache"]
+  args: []

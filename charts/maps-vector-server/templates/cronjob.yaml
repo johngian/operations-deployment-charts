@@ -1,0 +1,50 @@
+{{- if .Values.tileCacheSeeding.enabled -}}
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: {{ template "wmf.releasename" . }}-cache-seeding
+  labels:
+    app: {{ template "wmf.chartname" . }}
+    chart: {{ template "wmf.chartid" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  schedule: "{{ .Values.tileCacheSeeding.schedule }}"
+  jobTemplate:
+    spec:
+      parallelism: {{ .Values.tileCacheSeeding.parallelism }}
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: maps-cache-seeder
+              image: "{{ .Values.docker.registry }}/{{ .Values.main_app.image }}:{{ .Values.main_app.version }}"
+              imagePullPolicy: {{ .Values.docker.pull_policy }}
+              {{- if .Values.tileCacheSeeding.command }}
+              command:
+                {{- range .Values.tileCacheSeeding.command }}
+                - {{ . }}
+                {{- end }}
+              {{- end }}
+              {{- if .Values.tileCacheSeeding.args }}
+              args:
+                {{- range .Values.tileCacheSeeding.args }}
+                - {{ . }}
+                {{- end }}
+              {{- end }}
+              env:
+                {{- range $k, $v := .Values.config.public }}
+                  - name: {{ $k | upper }}
+                    value: {{ $v | quote }}
+                {{- end }}
+                {{- range $k, $v := .Values.config.private }}
+                  - name: {{ $k | upper }}
+                    valueFrom:
+                      secretKeyRef:
+                        name: {{ template "wmf.releasename" $ }}-secret-config
+                        key: {{ $k }}
+                {{- end }}
+              volumeMounts:
+                - name: config-volume
+                  mountPath: /etc/tegola
+{{- end }}
